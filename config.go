@@ -19,6 +19,11 @@ func readConfig(file string) map[string]string {
 	result := make(map[string]string)
 
 	for _, line := range lines {
+		// Ignore empty lines
+		if line == "" {
+			continue
+		}
+
 		kv := strings.Split(line, "=")
 
 		if len(kv) != 2 {
