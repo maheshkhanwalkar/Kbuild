@@ -12,7 +12,7 @@ func readConfig(file string) map[string]string {
 	data, err := os.ReadFile(file)
 
 	if err != nil {
-		panic("could not read .config! Did you forget to create it?")
+		panic("could not read config!")
 	}
 
 	lines := strings.Split(string(data), "\n")
