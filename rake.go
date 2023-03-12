@@ -6,7 +6,7 @@ import (
 )
 
 /*
-	Rake together all the objects to be built
+Rake together all the objects to be built
 */
 func Rake(dir string, archive string, config map[string]string, toolchain *Toolchain) {
 	objMap := make(map[string]string)
@@ -15,7 +15,7 @@ func Rake(dir string, archive string, config map[string]string, toolchain *Toolc
 
 func rake(dir string, config map[string]string, objMap map[string]string, toolchain *Toolchain) {
 	kbuild := dir + "/Kbuild"
-	parseKbuild(kbuild, config, objMap, toolchain)
+	parseKbuild(dir, kbuild, config, objMap, toolchain)
 
 	entries, err := os.ReadDir(dir)
 
@@ -31,21 +31,22 @@ func rake(dir string, config map[string]string, objMap map[string]string, toolch
 	}
 }
 
-func parseKbuild(kbuild string, config map[string]string, objMap map[string]string, toolchain *Toolchain) {
+func parseKbuild(dir string, kbuild string, config map[string]string, objMap map[string]string, toolchain *Toolchain) {
 	data, err := os.ReadFile(kbuild)
 
 	if err != nil {
-		panic("could not read Kbuild, failing: " + err.Error())
+		/* ignore on failure -- it's allowed to not have a Kbuild if there's no source files
+		   in the given directory */
+		return
 	}
 
-	lines := strings.Split(string(data), "\n")
+	lines := strings.FieldsFunc(string(data), func(c rune) bool {
+		return c == '\n'
+	})
+
 	var filesToProcess []string
 
 	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
 		pieces := strings.Split(line, "+=")
 
 		if len(pieces) != 2 {
@@ -53,9 +54,9 @@ func parseKbuild(kbuild string, config map[string]string, objMap map[string]stri
 		}
 
 		decl := pieces[0]
-		sourceFiles := strings.Split(pieces[0], " ")
 
-		objType := strings.Split(decl, "-")[1]
+		sourceFiles := strings.Fields(pieces[1])
+		objType := strings.TrimSpace(strings.Split(decl, "-")[1])
 
 		// Unconditional 'yes' -- always add it in!
 		if objType == "y" {
@@ -77,7 +78,7 @@ func parseKbuild(kbuild string, config map[string]string, objMap map[string]stri
 		output[len(output)-1] = 'o'
 
 		object := string(output)
-		toolchain.Compile(source, object)
+		toolchain.Compile(dir, source, object)
 
 		objMap[source] = string(output)
 	}

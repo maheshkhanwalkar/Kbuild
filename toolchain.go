@@ -1,6 +1,12 @@
 package main
 
-import "github.com/fatih/color"
+import (
+	"bytes"
+	"fmt"
+	"github.com/fatih/color"
+	"os/exec"
+	"strings"
+)
 
 type Toolchain struct {
 	cc      string
@@ -8,12 +14,26 @@ type Toolchain struct {
 	ldflags string
 }
 
-func (*Toolchain) Compile(source string, object string) {
-	// TODO
+func (tool *Toolchain) Compile(dir string, source string, object string) {
 	color.Green("[CC] " + object)
+
+	args := append(strings.Fields(tool.cflags), "-c", dir+"/"+source, "-o", dir+"/"+object)
+	cmd := exec.Command(tool.cc, args...)
+
+	var outBuf, errBuf bytes.Buffer
+
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	err := cmd.Run()
+
+	if err != nil {
+		fmt.Println(errBuf.String())
+		panic("build failed")
+	}
 }
 
-func (*Toolchain) Link(objects []string, output string) {
+func (*Toolchain) Link(dir string, objects []string, output string) {
 	// TODO
 	color.Green("[LD] " + output)
 }
