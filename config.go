@@ -6,13 +6,13 @@ import (
 )
 
 /*
-	Read the kernel config and build a key-value mapping
+Read the kernel config and build a key-value mapping
 */
 func readConfig(file string) map[string]string {
 	data, err := os.ReadFile(file)
 
 	if err != nil {
-		panic("could not read config!")
+		panic("could not read config: " + file)
 	}
 
 	lines := strings.Split(string(data), "\n")

@@ -1,9 +1,11 @@
 package main
 
 func main() {
-	println("kbuild")
+	println("[kbuild]")
 
 	config := readConfig(".config")
 	arch := getArch(config)
-	_ = getToolChain(arch)
+	toolchain := getToolChain(arch)
+
+	Rake("arch/"+arch.arch, "arch.a", config, toolchain)
 }
