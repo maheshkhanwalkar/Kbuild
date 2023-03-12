@@ -42,6 +42,10 @@ func parseKbuild(kbuild string, config map[string]string, objMap map[string]stri
 	var filesToProcess []string
 
 	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
 		pieces := strings.Split(line, "+=")
 
 		if len(pieces) != 2 {
