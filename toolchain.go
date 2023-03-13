@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/fatih/color"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -14,10 +15,25 @@ type Toolchain struct {
 	ldflags string
 }
 
-func (tool *Toolchain) Compile(dir string, source string, object string) {
-	color.Green("[CC] " + object)
+func buildObjectPath(source string) string {
+	chars := []rune(source)
+	chars[len(chars)-1] = 'o'
+	return string(chars)
+}
 
-	args := append(strings.Fields(tool.cflags), "-c", dir+"/"+source, "-o", dir+"/"+object)
+func getObjectNameFromPath(path string) string {
+	pos := strings.LastIndex(path, "/") + 1
+	return path[pos:]
+}
+
+/*
+Compile the given source file
+*/
+func (tool *Toolchain) Compile(source string) {
+	obj := buildObjectPath(source)
+	color.Green("[CC] " + getObjectNameFromPath(obj))
+
+	args := append(strings.Fields(tool.cflags), "-c", source, "-o", obj)
 	cmd := exec.Command(tool.cc, args...)
 
 	var outBuf, errBuf bytes.Buffer
@@ -36,4 +52,16 @@ func (tool *Toolchain) Compile(dir string, source string, object string) {
 func (*Toolchain) Link(dir string, objects []string, output string) {
 	// TODO
 	color.Green("[LD] " + output)
+}
+
+/*
+Clean the associated object file for this source file
+*/
+func (tool *Toolchain) Clean(source string) {
+	obj := buildObjectPath(source)
+	err := os.Remove(obj)
+
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "warn: could not remove %s", obj)
+	}
 }

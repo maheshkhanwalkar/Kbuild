@@ -5,17 +5,33 @@ import (
 	"strings"
 )
 
+type Action int
+
+const (
+	Build Action = iota
+	Clean
+)
+
 /*
-Rake together all the objects to be built
+Rake together all the source files and perform the requested action
 */
-func Rake(dir string, archive string, config map[string]string, toolchain *Toolchain) {
+func Rake(dir string, config map[string]string, toolchain *Toolchain, action Action) {
 	objMap := make(map[string]string)
-	rake(dir, config, objMap, toolchain)
+	rake(dir, config, objMap, toolchain, action)
 }
 
-func rake(dir string, config map[string]string, objMap map[string]string, toolchain *Toolchain) {
+func rake(dir string, config map[string]string, objMap map[string]string, toolchain *Toolchain, action Action) {
 	kbuild := dir + "/Kbuild"
-	parseKbuild(dir, kbuild, config, objMap, toolchain)
+	sources := parseKbuild(dir, kbuild, config)
+
+	for _, source := range sources {
+		switch action {
+		case Build:
+			toolchain.Compile(source)
+		case Clean:
+			toolchain.Clean(source)
+		}
+	}
 
 	entries, err := os.ReadDir(dir)
 
@@ -26,18 +42,18 @@ func rake(dir string, config map[string]string, objMap map[string]string, toolch
 	for _, entry := range entries {
 		if entry.IsDir() {
 			child := dir + "/" + entry.Name()
-			rake(child, config, objMap, toolchain)
+			rake(child, config, objMap, toolchain, action)
 		}
 	}
 }
 
-func parseKbuild(dir string, kbuild string, config map[string]string, objMap map[string]string, toolchain *Toolchain) {
+func parseKbuild(dir string, kbuild string, config map[string]string) []string {
 	data, err := os.ReadFile(kbuild)
 
 	if err != nil {
 		/* ignore on failure -- it's allowed to not have a Kbuild if there's no source files
 		   in the given directory */
-		return
+		return []string{}
 	}
 
 	lines := strings.FieldsFunc(string(data), func(c rune) bool {
@@ -73,13 +89,11 @@ func parseKbuild(dir string, kbuild string, config map[string]string, objMap map
 		}
 	}
 
+	var sources []string
+
 	for _, source := range filesToProcess {
-		output := []rune(source)
-		output[len(output)-1] = 'o'
-
-		object := string(output)
-		toolchain.Compile(dir, source, object)
-
-		objMap[source] = string(output)
+		sources = append(sources, dir+"/"+source)
 	}
+
+	return sources
 }

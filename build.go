@@ -7,5 +7,5 @@ func main() {
 	arch := getArch(config)
 	toolchain := getToolChain(arch)
 
-	Rake("arch/"+arch.arch, "arch.a", config, toolchain)
+	Rake(arch.GetArchPath(), config, toolchain, Build)
 }

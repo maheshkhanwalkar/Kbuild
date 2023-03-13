@@ -11,6 +11,10 @@ type Arch struct {
 	subArch *string
 }
 
+func (arch *Arch) GetArchPath() string {
+	return "arch/" + arch.arch
+}
+
 func getArch(config map[string]string) *Arch {
 	arch := config[ArchKey]
 	subArch, ok := config[SubArchKey]
@@ -23,7 +27,7 @@ func getArch(config map[string]string) *Arch {
 }
 
 func getToolChain(arch *Arch) *Toolchain {
-	path := "arch/" + arch.arch + "/Kbuild.bootstrap"
+	path := arch.GetArchPath() + "/Kbuild.bootstrap"
 
 	if arch.subArch != nil {
 		path += "." + *arch.subArch
