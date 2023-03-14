@@ -22,7 +22,9 @@ func Rake(dir string, config map[string]string, toolchain *Toolchain, action Act
 
 func rake(dir string, config map[string]string, objMap map[string]string, toolchain *Toolchain, action Action) {
 	kbuild := dir + "/Kbuild"
-	sources := parseKbuild(dir, kbuild, config)
+	denySet := make(map[string]struct{})
+
+	sources := parseKbuild(dir, kbuild, config, denySet)
 
 	for _, source := range sources {
 		switch action {
@@ -40,14 +42,14 @@ func rake(dir string, config map[string]string, objMap map[string]string, toolch
 	}
 
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() && !containsKey(denySet, entry.Name()) {
 			child := dir + "/" + entry.Name()
 			rake(child, config, objMap, toolchain, action)
 		}
 	}
 }
 
-func parseKbuild(dir string, kbuild string, config map[string]string) []string {
+func parseKbuild(dir string, kbuild string, config map[string]string, denySet map[string]struct{}) []string {
 	data, err := os.ReadFile(kbuild)
 
 	if err != nil {
@@ -71,7 +73,7 @@ func parseKbuild(dir string, kbuild string, config map[string]string) []string {
 
 		decl := pieces[0]
 
-		sourceFiles := strings.Fields(pieces[1])
+		sourceFiles, dirs := categorise(dir, strings.Fields(pieces[1]))
 		objType := strings.TrimSpace(strings.Split(decl, "-")[1])
 
 		// Unconditional 'yes' -- always add it in!
@@ -85,6 +87,13 @@ func parseKbuild(dir string, kbuild string, config map[string]string) []string {
 			// Conditional 'yes'
 			if resolved == "y" {
 				filesToProcess = append(filesToProcess, sourceFiles...)
+			} else {
+				/*
+					By default, we descend into subdirectories, so if the conditional
+					check resolves to false, then explicitly mark the subdirectories
+					are denied so rake() will ignore them
+				*/
+				addToDenySet(dirs, denySet)
 			}
 		}
 	}
@@ -96,4 +105,48 @@ func parseKbuild(dir string, kbuild string, config map[string]string) []string {
 	}
 
 	return sources
+}
+
+func categorise(dir string, input []string) ([]string, []string) {
+	var sources []string
+	var dirs []string
+
+	for _, elem := range input {
+		path := dir + "/" + elem
+		info, err := os.Stat(path)
+
+		if err != nil {
+			panic("could not stat: " + path)
+		}
+
+		if info.IsDir() {
+			count := strings.Count(elem, "/")
+
+			if count > 1 || (count > 0 && elem[len(elem)-1] != '/') {
+				panic("invalid Kbuild configuration: " + elem + ", only one directory level is allowed")
+			}
+
+			// Normalise dir path to not have terminating slash
+			if elem[len(elem)-1] == '/' {
+				elem = elem[:len(elem)-2]
+			}
+
+			dirs = append(dirs, elem)
+		} else {
+			sources = append(sources, elem)
+		}
+	}
+
+	return sources, dirs
+}
+
+func addToDenySet(slice []string, deny map[string]struct{}) {
+	for _, elem := range slice {
+		deny[elem] = struct{}{}
+	}
+}
+
+func containsKey(set map[string]struct{}, key string) bool {
+	_, ok := set[key]
+	return ok
 }
