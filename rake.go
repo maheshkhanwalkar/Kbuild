@@ -15,12 +15,14 @@ const (
 /*
 Rake together all the source files and perform the requested action
 */
-func Rake(dir string, config map[string]string, toolchain *Toolchain, action Action) {
-	objMap := make(map[string]string)
+func Rake(dir string, config map[string]string, toolchain *Toolchain, action Action) []string {
+	var objMap = make(map[string]struct{})
 	rake(dir, config, objMap, toolchain, action)
+
+	return toSlice(objMap)
 }
 
-func rake(dir string, config map[string]string, objMap map[string]string, toolchain *Toolchain, action Action) {
+func rake(dir string, config map[string]string, objMap map[string]struct{}, toolchain *Toolchain, action Action) {
 	kbuild := dir + "/Kbuild"
 	denySet := make(map[string]struct{})
 
@@ -29,7 +31,8 @@ func rake(dir string, config map[string]string, objMap map[string]string, toolch
 	for _, source := range sources {
 		switch action {
 		case Build:
-			toolchain.Compile(source)
+			obj := toolchain.Compile(source)
+			objMap[obj] = struct{}{}
 		case Clean:
 			toolchain.Clean(source)
 		}
@@ -149,4 +152,14 @@ func addToDenySet(slice []string, deny map[string]struct{}) {
 func containsKey(set map[string]struct{}, key string) bool {
 	_, ok := set[key]
 	return ok
+}
+
+func toSlice(mp map[string]struct{}) []string {
+	var res = make([]string, len(mp))
+
+	for key, _ := range mp {
+		res = append(res, key)
+	}
+
+	return res
 }

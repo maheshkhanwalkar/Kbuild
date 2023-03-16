@@ -11,8 +11,8 @@ import (
 
 type Toolchain struct {
 	cc      string
-	cflags  string
-	ldflags string
+	cflags  []string
+	ldflags []string
 }
 
 func buildObjectPath(source string) string {
@@ -26,15 +26,8 @@ func getObjectNameFromPath(path string) string {
 	return path[pos:]
 }
 
-/*
-Compile the given source file
-*/
-func (tool *Toolchain) Compile(source string) {
-	obj := buildObjectPath(source)
-	color.Green("[CC] " + getObjectNameFromPath(obj))
-
-	args := append(strings.Fields(tool.cflags), "-c", source, "-o", obj)
-	cmd := exec.Command(tool.cc, args...)
+func execCmd(name string, args []string) {
+	cmd := exec.Command(name, args...)
 
 	var outBuf, errBuf bytes.Buffer
 
@@ -49,9 +42,31 @@ func (tool *Toolchain) Compile(source string) {
 	}
 }
 
-func (*Toolchain) Link(dir string, objects []string, output string) {
-	// TODO
+/*
+Compile the given source file
+*/
+func (tool *Toolchain) Compile(source string) string {
+	obj := buildObjectPath(source)
+	color.Green("[CC] " + getObjectNameFromPath(obj))
+
+	args := append(tool.cflags, "-c", source, "-o", obj)
+	execCmd(tool.cc, args)
+
+	return obj
+}
+
+/*
+Link the object files into one output file
+*/
+func (tool *Toolchain) Link(dir string, objects []string, output string) {
 	color.Green("[LD] " + output)
+
+	obj := dir + "/" + output
+
+	args := append(tool.ldflags, objects...)
+	args = append(args, "-o", obj)
+
+	execCmd(tool.cc, args)
 }
 
 /*

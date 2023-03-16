@@ -5,7 +5,8 @@ func main() {
 
 	config := readConfig(".config")
 	arch := getArch(config)
-	toolchain := getToolChain(arch)
+	toolchain := getToolChain(arch, config)
 
-	Rake(arch.GetArchPath(), config, toolchain, Build)
+	objs := Rake(arch.GetArchPath(), config, toolchain, Build)
+	toolchain.Link(".", objs, "vminix")
 }
