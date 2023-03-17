@@ -24,14 +24,18 @@ func readConfig(file string) map[string]string {
 			continue
 		}
 
-		kv := strings.Split(line, "=")
-
-		if len(kv) != 2 {
-			panic("error: invalid config format: " + line)
-		}
+		kv := strings.FieldsFunc(line, func(r rune) bool {
+			return r == '='
+		})
 
 		key := kv[0]
-		value := kv[1]
+		var value string
+
+		if len(kv) != 2 {
+			value = strings.Join(kv[1:], "=")
+		} else {
+			value = kv[1]
+		}
 
 		result[key] = value
 	}

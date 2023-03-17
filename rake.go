@@ -155,7 +155,7 @@ func containsKey(set map[string]struct{}, key string) bool {
 }
 
 func toSlice(mp map[string]struct{}) []string {
-	var res = make([]string, len(mp))
+	var res = make([]string, 0, len(mp))
 
 	for key, _ := range mp {
 		res = append(res, key)
