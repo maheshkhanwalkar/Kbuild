@@ -75,29 +75,52 @@ func parseKbuild(dir string, kbuild string, config map[string]string, denySet ma
 		}
 
 		decl := pieces[0]
-
 		sourceFiles, dirs := categorise(dir, strings.Fields(pieces[1]))
-		objType := strings.TrimSpace(strings.Split(decl, "-")[1])
+
+		conditions := strings.Split(decl, "-")
+		srcQualifier := strings.TrimSpace(conditions[1])
 
 		// Unconditional 'yes' -- always add it in!
-		if objType == "y" {
+		if srcQualifier == "y" {
+			if len(conditions) > 2 {
+				panic("invalid Kbuild configuration: " + line +
+					", cannot have multiple qualifiers mixed with unconditional qualifier")
+			}
+
 			filesToProcess = append(filesToProcess, sourceFiles...)
+			continue
 		}
 
-		if strings.Contains(objType, "CONFIG_") {
-			resolved := config[objType]
+		condCheck := true
 
-			// Conditional 'yes'
-			if resolved == "y" {
-				filesToProcess = append(filesToProcess, sourceFiles...)
+		for _, rawQualifier := range conditions[1:] {
+			qualifier := strings.TrimSpace(rawQualifier)
+
+			if strings.Contains(qualifier, "CONFIG_") {
+				start := strings.Index(qualifier, "{")
+				end := strings.Index(qualifier, "}")
+
+				configName := qualifier[start+1 : end]
+				resolution := config[configName]
+
+				if resolution != "y" {
+					/*
+						By default, we descend into subdirectories, so if the conditional
+						check resolves to false, then explicitly mark the subdirectories
+						are denied so rake() will ignore them
+					*/
+					addToDenySet(dirs, denySet)
+					condCheck = false
+					break
+				}
 			} else {
-				/*
-					By default, we descend into subdirectories, so if the conditional
-					check resolves to false, then explicitly mark the subdirectories
-					are denied so rake() will ignore them
-				*/
-				addToDenySet(dirs, denySet)
+				panic("invalid Kbuild configuration: " + line + ", bad qualifier")
 			}
+		}
+
+		// All conditional checks need to pass for the overall qualifier to be considered true
+		if condCheck {
+			filesToProcess = append(filesToProcess, sourceFiles...)
 		}
 	}
 
@@ -131,7 +154,7 @@ func categorise(dir string, input []string) ([]string, []string) {
 
 			// Normalise dir path to not have terminating slash
 			if elem[len(elem)-1] == '/' {
-				elem = elem[:len(elem)-2]
+				elem = elem[:len(elem)-1]
 			}
 
 			dirs = append(dirs, elem)
